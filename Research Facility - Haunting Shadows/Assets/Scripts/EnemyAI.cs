@@ -14,8 +14,6 @@ public class EnemyAI : MonoBehaviour
     {
         animator = GetComponent<Animator>(); // Get the Animator component
         characterController = GetComponent<CharacterController>(); // Get the CharacterController component
-
-
     }
 
     void Update()
@@ -66,13 +64,10 @@ public class EnemyAI : MonoBehaviour
 
     void UpdateAnimation()
     {
-        // Calculate the local direction of movement
-        Vector3 localDirection = transform.InverseTransformDirection(characterController.velocity).normalized;
+        // Check if the character is moving by examining the magnitude of velocity
+        bool isMoving = characterController.velocity.magnitude > 0.1f; // Use a small threshold to determine movement
 
-        // Set the appropriate animation based on the movement direction
-        animator.SetBool("WalkForward", localDirection.z > 0);
-        animator.SetBool("WalkBackward", localDirection.z < 0);
-        animator.SetBool("WalkRight", localDirection.x > 0);
-        animator.SetBool("WalkLeft", localDirection.x < 0);
+        // Set the walk animation based on movement
+        animator.SetBool("WalkForward", isMoving);
     }
 }
