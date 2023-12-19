@@ -23,6 +23,7 @@ public class EnemyAI : MonoBehaviour
         timer = patrolTimer;
 
         agent.speed = moveSpeed;
+        agent.updateRotation = false; // Disable automatic rotation
     }
 
     void Update()
@@ -51,6 +52,12 @@ public class EnemyAI : MonoBehaviour
 
         // Set isIdle based on whether the enemy is moving or not
         animator.SetBool("isIdle", agent.velocity.magnitude < 0.01f);
+
+        // Update the enemy's rotation to face the movement direction
+        if (agent.velocity.magnitude > 0.01f)
+        {
+            transform.rotation = Quaternion.LookRotation(agent.velocity.normalized);
+        }
     }
 
     bool CanSeePlayer(float distanceToPlayer)
