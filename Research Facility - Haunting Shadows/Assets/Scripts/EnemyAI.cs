@@ -1,73 +1,97 @@
 using UnityEngine;
+using UnityEngine.AI;
 
 public class EnemyAI : MonoBehaviour
 {
-    public Transform[] waypoints; // Array of waypoint positions
-    public int currentWaypointIndex = 0; // Current waypoint index
-    public float moveSpeed = 2.0f; // Speed of the enemy movement
-    public float gravity = -9.81f; // Gravity applied to the enemy
+    public float patrolRadius = 10.0f;
+    public float patrolTimer = 5.0f;
+    public float moveSpeed = 2.0f;
+    public Transform player; // Reference to the player
+    public float attackDistance = 2.0f; // Distance at which the enemy starts attacking
+    public float sightDistance = 15.0f; // Distance at which the enemy can see the player
+    public float fieldOfView = 60.0f; // Field of view for line of sight
 
-    private Animator animator; // Reference to the Animator component
-    private CharacterController characterController; // Character controller for movement
+    private float timer;
+    private NavMeshAgent agent;
+    private Animator animator;
+    private bool isChasingPlayer = false;
 
     void Start()
     {
-        animator = GetComponent<Animator>(); // Get the Animator component
-        characterController = GetComponent<CharacterController>(); // Get the CharacterController component
+        agent = GetComponent<NavMeshAgent>();
+        animator = GetComponent<Animator>();
+        timer = patrolTimer;
+
+        agent.speed = moveSpeed;
     }
 
     void Update()
     {
-        MoveEnemy();
-        UpdateAnimation();
-    }
+        float distanceToPlayer = Vector3.Distance(transform.position, player.position);
+        bool canSeePlayer = CanSeePlayer(distanceToPlayer);
 
-    void MoveEnemy()
-    {
-        if (waypoints.Length == 0) return;
-
-        // Get the current waypoint
-        Transform targetWaypoint = waypoints[currentWaypointIndex];
-        Vector3 targetDirection = (targetWaypoint.position - transform.position).normalized;
-
-        // Adjust for slope and gravity
-        if (Physics.Raycast(transform.position, Vector3.down, out RaycastHit hitInfo))
+        if (canSeePlayer)
         {
-            Vector3 groundNormal = hitInfo.normal;
-            Vector3 projectedMoveDirection = Vector3.ProjectOnPlane(targetDirection, groundNormal);
-            projectedMoveDirection *= moveSpeed;
-
-            // Apply gravity
-            projectedMoveDirection.y += gravity * Time.deltaTime;
-
-            // Move the character controller
-            characterController.Move(projectedMoveDirection * Time.deltaTime);
+            // Chase the player
+            isChasingPlayer = true;
+            agent.SetDestination(player.position);
+            animator.SetBool("IsAttack", distanceToPlayer <= attackDistance);
+        }
+        else if (isChasingPlayer)
+        {
+            // Stop chasing if player is no longer visible
+            isChasingPlayer = false;
+            animator.SetBool("IsAttack", false);
         }
         else
         {
-            // Fallback if raycast does not hit the ground
-            characterController.Move(targetDirection * moveSpeed * Time.deltaTime);
+            // Random Patrol
+            Patrol();
         }
 
-        // Check if the enemy has reached the waypoint
-        if (Vector3.Distance(transform.position, targetWaypoint.position) < 0.1f)
-        {
-            currentWaypointIndex = (currentWaypointIndex + 1) % waypoints.Length; // Move to the next waypoint
-        }
-
-        // Update the enemy's rotation to face the movement direction
-        if (targetDirection != Vector3.zero)
-        {
-            transform.rotation = Quaternion.LookRotation(new Vector3(targetDirection.x, 0, targetDirection.z));
-        }
+        // Set isIdle based on whether the enemy is moving or not
+        animator.SetBool("isIdle", agent.velocity.magnitude < 0.01f);
     }
 
-    void UpdateAnimation()
+    bool CanSeePlayer(float distanceToPlayer)
     {
-        // Check if the character is moving by examining the magnitude of velocity
-        bool isMoving = characterController.velocity.magnitude > 0.1f; // Use a small threshold to determine movement
+        if (distanceToPlayer <= sightDistance)
+        {
+            Vector3 directionToPlayer = (player.position - transform.position).normalized;
+            float angle = Vector3.Angle(transform.forward, directionToPlayer);
+            if (angle <= fieldOfView / 2)
+            {
+                RaycastHit hit;
+                if (Physics.Raycast(transform.position, directionToPlayer, out hit, sightDistance))
+                {
+                    return hit.transform == player;
+                }
+            }
+        }
+        return false;
+    }
 
-        // Set the walk animation based on movement
-        animator.SetBool("WalkForward", isMoving);
+    void Patrol()
+    {
+        timer += Time.deltaTime;
+
+        if (timer >= patrolTimer)
+        {
+            Vector3 newPos = RandomNavSphere(transform.position, patrolRadius, -1);
+            agent.SetDestination(newPos);
+            timer = 0;
+        }
+
+        // Update the walking animation based on velocity
+        animator.SetBool("WalkForward", agent.velocity.magnitude > 0.01f);
+    }
+
+    public static Vector3 RandomNavSphere(Vector3 origin, float dist, int layermask)
+    {
+        Vector3 randDirection = Random.insideUnitSphere * dist;
+        randDirection += origin;
+        NavMeshHit navHit;
+        NavMesh.SamplePosition(randDirection, out navHit, dist, layermask);
+        return navHit.position;
     }
 }
