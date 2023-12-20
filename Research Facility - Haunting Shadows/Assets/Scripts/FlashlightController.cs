@@ -1,96 +1,82 @@
 using UnityEngine;
-using UnityEngine.UI; // Import the UI namespace
+using UnityEngine.UI;
 
 public class FlashlightController : MonoBehaviour
 {
-    public Light Flashlight; // Reference to the Spotlight component
-    public Text flashlightMessage; // UI Text for the message
-    public Slider flashlightBatteryBar; // UI Slider for the battery bar
+    public Light flashlight;
+    public Text flashlightMessage;
+    public Slider flashlightBatteryBar;
 
-    private bool isFlashlightOn = false; // Flashlight state
-    private float flashlightTimer = 0; // Timer to track flashlight usage
-    private float messageTimer = 0; // Timer for the message display
-    private float flashlightDuration = 30f; // Duration before flashlight turns off
-    private float messageDuration = 5f; // Duration to display the message
+    private bool isFlashlightOn = false;
+    private bool canUseFlashlight = true;
+    private float flashlightTimer = 0;
+    private float flashlightDuration = 30f;
+    private float messageTimer = 0; // Separate timer for message display
+    private bool showMessage = false;
 
     void Start()
     {
-        // Initialize the UI elements
         flashlightMessage.text = "";
         flashlightBatteryBar.maxValue = flashlightDuration;
-        flashlightBatteryBar.value = flashlightDuration;
+        flashlightBatteryBar.value = flashlightBatteryBar.maxValue;
     }
 
     void Update()
     {
-        // Check for the 'F' key press to toggle the flashlight
-        if (Input.GetKeyDown(KeyCode.F))
+        if (Input.GetKeyDown(KeyCode.F) && canUseFlashlight)
         {
             ToggleFlashlight();
         }
 
-        // Update flashlight timer and UI
         if (isFlashlightOn)
         {
             flashlightTimer += Time.deltaTime;
-            flashlightBatteryBar.value = flashlightDuration - flashlightTimer;
+            flashlightBatteryBar.value = flashlightBatteryBar.maxValue - flashlightTimer;
 
-            if (flashlightTimer >= flashlightDuration)
+            if (flashlightTimer >= flashlightBatteryBar.maxValue)
             {
                 TurnOffFlashlight();
                 ShowMessage("Damn, flashlight is out, I need to find some batteries.");
+                canUseFlashlight = false;
             }
         }
 
-        // Update message timer
-        if (!string.IsNullOrEmpty(flashlightMessage.text))
+        if (showMessage)
         {
             messageTimer += Time.deltaTime;
-            if (messageTimer >= messageDuration)
+            if (messageTimer >= 3f) // Clears the message after 3 seconds
             {
-                flashlightMessage.text = ""; // Clear the message after 5 seconds
-                messageTimer = 0; // Reset the message timer
+                flashlightMessage.text = "";
+                showMessage = false;
+                messageTimer = 0; // Reset message timer
             }
         }
     }
 
     void ToggleFlashlight()
     {
-        isFlashlightOn = !isFlashlightOn; // Toggle the state
-        Flashlight.enabled = isFlashlightOn; // Enable or disable the light
-
-        if (isFlashlightOn)
-        {
-            // Removed the line that resets the timer
-            flashlightMessage.text = ""; // Clear the message
-            messageTimer = 0; // Reset the message timer
-        }
+        isFlashlightOn = !isFlashlightOn;
+        flashlight.enabled = isFlashlightOn;
     }
 
     void TurnOffFlashlight()
     {
         isFlashlightOn = false;
-        Flashlight.enabled = false;
+        flashlight.enabled = false;
     }
 
-    // Call this method when the player picks up a battery
     public void PickupBattery()
     {
-        flashlightTimer = 0; // Reset the timer
-        flashlightBatteryBar.value = flashlightDuration; // Refill the battery bar
-
-        // If the flashlight was off when the battery was picked up, clear the message
-        if (!isFlashlightOn)
-        {
-            flashlightMessage.text = "";
-            messageTimer = 0; // Reset the message timer
-        }
+        flashlightTimer = 0;
+        flashlightBatteryBar.value = flashlightBatteryBar.maxValue;
+        canUseFlashlight = true;
+        ShowMessage("Battery Collected");
     }
 
-    // Method to show a message
     private void ShowMessage(string message)
     {
         flashlightMessage.text = message;
-        messageTimer = 0; // Reset the message timer when a new message is shown
+        showMessage = true;
+        messageTimer = 0; // Reset message timer
     }
 }
