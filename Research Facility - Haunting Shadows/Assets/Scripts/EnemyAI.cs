@@ -39,7 +39,16 @@ public class EnemyAI : MonoBehaviour
             // Chase the player
             isChasingPlayer = true;
             agent.SetDestination(player.position);
-            animator.SetBool("IsAttack", distanceToPlayer <= attackDistance);
+
+            // Trigger attack animation if within attack distance
+            if (distanceToPlayer <= attackDistance)
+            {
+                animator.SetTrigger("IsAttack");
+            }
+            else
+            {
+                animator.SetBool("IsAttack", false);
+            }
 
             // Turn towards the player if detected from behind
             if (canSeePlayerFromBehind)
@@ -66,6 +75,14 @@ public class EnemyAI : MonoBehaviour
         if (agent.velocity.magnitude > 0.01f && !canSeePlayerFromBehind)
         {
             transform.rotation = Quaternion.LookRotation(agent.velocity.normalized);
+        }
+    }
+
+    public void AttackPlayer()
+    {
+        if (Vector3.Distance(transform.position, player.position) <= attackDistance)
+        {
+            player.GetComponent<PlayerHealth>().TakeDamage(30);
         }
     }
 
