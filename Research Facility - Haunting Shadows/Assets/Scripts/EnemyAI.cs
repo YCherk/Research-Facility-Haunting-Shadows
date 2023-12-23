@@ -6,27 +6,27 @@ public class EnemyAI : MonoBehaviour
     public float patrolRadius = 10.0f;
     public float patrolTimer = 5.0f;
     public float moveSpeed = 2.0f;
-    public Transform player; // Reference to the player
-    public float attackDistance = 2.0f; // Distance at which the enemy starts attacking
-    public float sightDistance = 15.0f; // Distance at which the enemy can see the player in front
-    public float backSightDistance = 5.0f; // Distance at which the enemy can see the player from behind
-    public float fieldOfView = 60.0f; // Field of view for line of sight in front
-    public float backFieldOfView = 90.0f; // Field of view for line of sight from behind
-    
+    public Transform player;
+    public float attackDistance = 2.0f;
+    public float sightDistance = 15.0f;
+    public float backSightDistance = 5.0f;
+    public float fieldOfView = 60.0f;
+    public float backFieldOfView = 90.0f;
 
     private float timer;
     private NavMeshAgent agent;
     private Animator animator;
     private bool isChasingPlayer = false;
+    private bool isSearchingForPlayer = false;
+    private Vector3 lastKnownPlayerPosition;
 
     void Start()
     {
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
         timer = patrolTimer;
-
         agent.speed = moveSpeed;
-        agent.updateRotation = false; // Disable automatic rotation
+        agent.updateRotation = false;
     }
 
     void Update()
@@ -38,6 +38,8 @@ public class EnemyAI : MonoBehaviour
         if (canSeePlayer || canSeePlayerFromBehind)
         {
             isChasingPlayer = true;
+            isSearchingForPlayer = false;
+            lastKnownPlayerPosition = player.position;
             agent.SetDestination(player.position);
 
             if (distanceToPlayer <= attackDistance)
@@ -57,7 +59,16 @@ public class EnemyAI : MonoBehaviour
         else if (isChasingPlayer)
         {
             isChasingPlayer = false;
-            animator.SetBool("IsAttack", false);
+            isSearchingForPlayer = true;
+            agent.SetDestination(lastKnownPlayerPosition);
+        }
+        else if (isSearchingForPlayer)
+        {
+            if (Vector3.Distance(transform.position, lastKnownPlayerPosition) < 1f)
+            {
+                isSearchingForPlayer = false;
+                Patrol();
+            }
         }
         else
         {
