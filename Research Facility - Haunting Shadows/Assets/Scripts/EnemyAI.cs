@@ -6,6 +6,7 @@ public class EnemyAI : MonoBehaviour
     public float patrolRadius = 10.0f;
     public float patrolTimer = 5.0f;
     public float moveSpeed = 2.0f;
+    public float chaseSpeed = 4.0f; // Speed when chasing the player
     public Transform player;
     public float attackDistance = 2.0f;
     public float sightDistance = 15.0f;
@@ -25,7 +26,7 @@ public class EnemyAI : MonoBehaviour
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
         timer = patrolTimer;
-        agent.speed = moveSpeed;
+        agent.speed = moveSpeed; // Set initial speed to patrol speed
         agent.updateRotation = false;
     }
 
@@ -37,10 +38,16 @@ public class EnemyAI : MonoBehaviour
 
         if (canSeePlayer || canSeePlayerFromBehind)
         {
+            if (!isChasingPlayer)
+            {
+                TurnTowardsPlayer();
+                agent.speed = chaseSpeed; // Increase speed when starting to chase
+            }
             isChasingPlayer = true;
             isSearchingForPlayer = false;
             lastKnownPlayerPosition = player.position;
             agent.SetDestination(player.position);
+            animator.SetBool("isRunning", true);
 
             if (distanceToPlayer <= attackDistance)
             {
@@ -50,16 +57,12 @@ public class EnemyAI : MonoBehaviour
             {
                 animator.SetBool("IsAttack", false);
             }
-
-            if (canSeePlayerFromBehind)
-            {
-                TurnTowardsPlayer();
-            }
         }
         else if (isChasingPlayer)
         {
             isChasingPlayer = false;
             isSearchingForPlayer = true;
+            agent.speed = moveSpeed; // Reset speed when stopping the chase
             agent.SetDestination(lastKnownPlayerPosition);
         }
         else if (isSearchingForPlayer)
@@ -67,7 +70,13 @@ public class EnemyAI : MonoBehaviour
             if (Vector3.Distance(transform.position, lastKnownPlayerPosition) < 1f)
             {
                 isSearchingForPlayer = false;
+                animator.SetBool("isRunning", false); // Stop running after search
                 Patrol();
+            }
+            else
+            {
+                // Keep running if still searching
+                animator.SetBool("isRunning", true);
             }
         }
         else
